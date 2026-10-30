@@ -137,5 +137,5 @@
     }
   });
 
-  carregarProdutos();
+  iniciarPagina({ somenteAdmin: true }).then(carregarProdutos);
 })();

@@ -52,3 +52,38 @@ if (!Api.configurado) {
     document.querySelector('main').prepend(faixa);
   });
 }
+
+// Confere o login antes de a tela carregar os dados.
+// somenteAdmin: quem não é admin é levado para a tela de venda.
+// Resolve com o perfil ({ nome, admin }) ou não resolve (a página está saindo).
+async function iniciarPagina(opcoes = {}) {
+  if (!Api.configurado) return new Promise(() => {});
+  if (!Api.sessao()) {
+    location.replace('login.html');
+    return new Promise(() => {});
+  }
+
+  let perfil;
+  try {
+    perfil = await Api.carregarPerfil();
+  } catch (erro) {
+    // Sem internet: segue com o perfil guardado no último acesso.
+    perfil = Api.sessao() && Api.sessao().perfil;
+    if (!perfil) {
+      avisar(erro.message, 'erro');
+      return new Promise(() => {});
+    }
+  }
+
+  if (opcoes.somenteAdmin && !perfil.admin) {
+    location.replace('index.html');
+    return new Promise(() => {});
+  }
+
+  document.body.classList.toggle('admin', perfil.admin);
+  const caixaUsuario = document.getElementById('usuario-topo');
+  caixaUsuario.innerHTML = '<span>' + escaparHtml(perfil.nome) + '</span>' +
+    '<button type="button" class="botao-sair">Sair</button>';
+  caixaUsuario.querySelector('button').addEventListener('click', () => Api.sair());
+  return perfil;
+}

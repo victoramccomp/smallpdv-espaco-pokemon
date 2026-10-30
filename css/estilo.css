@@ -60,9 +60,31 @@ body {
   color: #fff;
   padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
 }
-.topo h1 { margin: 0 auto; max-width: 560px; font-size: 1.2rem; font-weight: 700; }
+.topo-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.topo h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
 @media (prefers-color-scheme: dark) {
   .topo { background: var(--superficie); color: var(--texto); border-bottom: 1px solid var(--borda); }
+}
+
+.usuario-topo { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: .875rem; font-weight: 600; }
+.usuario-topo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9em; }
+.botao-sair {
+  min-height: 34px;
+  padding: 4px 12px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: .9;
 }
 
 .conteudo { max-width: 560px; margin: 0 auto; padding: 16px; }
@@ -247,6 +269,18 @@ input[aria-invalid="true"] { border-color: var(--perigo); }
 }
 .abas a svg { width: 24px; height: 24px; }
 .abas a[aria-current="page"] { color: var(--destaque); }
+
+/* Só o admin navega entre as telas; o vendedor fica na tela de venda. */
+body:not(.admin) { --altura-abas: 0px; }
+body:not(.admin) .abas { display: none; }
+
+/* ---------- Login ---------- */
+
+.pagina-login .conteudo { padding-top: calc(48px + env(safe-area-inset-top)); }
+.marca-login { text-align: center; margin-bottom: 20px; }
+.marca-login img { display: block; margin: 0 auto 8px; border-radius: 16px; }
+.marca-login h1 { margin: 0; font-size: 1.6rem; }
+.marca-login p { margin: 6px 0 0; color: var(--texto-suave); }
 
 /* ---------- Avisos ---------- */
 

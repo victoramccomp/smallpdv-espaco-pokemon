@@ -1,8 +1,61 @@
 -- =====================================================================
 -- SmallPDVMobile — banco de dados (Supabase / PostgreSQL)
 -- Cole este arquivo inteiro no SQL Editor do Supabase e clique em "Run".
--- Pode ser executado de novo sem perder dados (usa "if not exists").
+-- Pode ser executado de novo sem perder dados: serve para instalar do
+-- zero e também para atualizar um banco criado por uma versão anterior.
+--
+-- Acesso:
+--   * só usuários logados (Supabase Auth) usam o app;
+--   * admin   → cadastra/edita produtos, vê o relatório, registra vendas;
+--   * demais  → apenas registram vendas.
 -- =====================================================================
+
+-- ---------- Perfis (nome de exibição e papel de cada usuário) ----------
+
+create table if not exists public.perfis (
+  id        uuid        primary key references auth.users(id) on delete cascade,
+  nome      text        not null check (length(trim(nome)) > 0),
+  admin     boolean     not null default false,
+  criado_em timestamptz not null default now()
+);
+
+-- Cria o perfil automaticamente quando um usuário é adicionado no Supabase.
+-- Nome inicial = parte do e-mail antes do "@" (dá para trocar no Table Editor).
+create or replace function public.criar_perfil()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.perfis (id, nome)
+  values (new.id, coalesce(nullif(trim(new.raw_user_meta_data->>'nome'), ''), split_part(new.email, '@', 1)))
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists ao_criar_usuario on auth.users;
+create trigger ao_criar_usuario
+  after insert on auth.users
+  for each row execute function public.criar_perfil();
+
+-- Usuários que já existiam antes deste script também ganham perfil.
+insert into public.perfis (id, nome)
+select u.id, split_part(u.email, '@', 1)
+  from auth.users u
+on conflict (id) do nothing;
+
+-- O usuário logado é admin?
+create or replace function public.eh_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select admin from public.perfis where id = auth.uid()), false);
+$$;
 
 -- ---------- Tabelas ----------
 
@@ -24,12 +77,19 @@ create table if not exists public.vendas (
   criado_em      timestamptz   not null default now()
 );
 
+-- Quem registrou a venda (vendas anteriores ao login ficam sem vendedor).
+alter table public.vendas
+  add column if not exists usuario_id uuid references public.perfis(id) on delete set null;
+
 create index if not exists vendas_produto_id_idx on public.vendas (produto_id);
 create index if not exists vendas_criado_em_idx  on public.vendas (criado_em);
+create index if not exists vendas_usuario_id_idx on public.vendas (usuario_id);
 
 -- ---------- Registro de venda ----------
--- Baixa o estoque e grava a venda numa única transação:
--- ou as duas coisas acontecem, ou nenhuma.
+-- Baixa o estoque e grava a venda numa única transação. Roda com
+-- privilégios do dono (security definer) porque o vendedor não pode
+-- alterar produtos diretamente; o vendedor gravado é sempre o usuário
+-- logado, então ninguém registra venda em nome de outra pessoa.
 
 create or replace function public.registrar_venda(
   p_produto_id     bigint,
@@ -38,11 +98,15 @@ create or replace function public.registrar_venda(
 )
 returns public.vendas
 language plpgsql
+security definer
 set search_path = public
 as $$
 declare
   v_venda public.vendas;
 begin
+  if auth.uid() is null or not exists (select 1 from perfis where id = auth.uid()) then
+    raise exception 'Faça login para registrar vendas.';
+  end if;
   if p_quantidade is null or p_quantidade <= 0 then
     raise exception 'A quantidade precisa ser maior que zero.';
   end if;
@@ -62,8 +126,8 @@ begin
     raise exception 'Estoque insuficiente para essa quantidade.';
   end if;
 
-  insert into vendas (produto_id, quantidade, valor_unitario)
-  values (p_produto_id, p_quantidade, p_valor_unitario)
+  insert into vendas (produto_id, quantidade, valor_unitario, usuario_id)
+  values (p_produto_id, p_quantidade, p_valor_unitario, auth.uid())
   returning * into v_venda;
 
   return v_venda;
@@ -72,10 +136,14 @@ $$;
 
 -- ---------- Relatório de venda por produto ----------
 -- Sem datas = todo o período. p_fim é exclusivo (vendas antes de p_fim).
+-- p_usuario_id = null → todos os vendedores. Só o admin recebe linhas.
+
+drop function if exists public.relatorio_vendas(timestamptz, timestamptz);
 
 create or replace function public.relatorio_vendas(
-  p_inicio timestamptz default null,
-  p_fim    timestamptz default null
+  p_inicio     timestamptz default null,
+  p_fim        timestamptz default null,
+  p_usuario_id uuid        default null
 )
 returns table (
   produto_id         bigint,
@@ -93,35 +161,79 @@ as $$
          sum(v.valor_total)
     from vendas v
     join produtos p on p.id = v.produto_id
-   where (p_inicio is null or v.criado_em >= p_inicio)
-     and (p_fim    is null or v.criado_em <  p_fim)
+   where eh_admin()
+     and (p_inicio     is null or v.criado_em >= p_inicio)
+     and (p_fim        is null or v.criado_em <  p_fim)
+     and (p_usuario_id is null or v.usuario_id = p_usuario_id)
    group by p.id, p.nome
    order by sum(v.valor_total) desc, p.nome;
 $$;
 
--- ---------- Acesso pela chave pública (anon) ----------
--- ATENÇÃO: o app não tem login. Qualquer pessoa com o link do site
--- (e, portanto, com a chave pública) consegue ler e gravar estes dados.
+-- ---------- Permissões ----------
 
+alter table public.perfis   enable row level security;
 alter table public.produtos enable row level security;
 alter table public.vendas   enable row level security;
 
+-- Remove as políticas da versão sem login (acesso público).
 drop policy if exists "pdv_produtos_acesso" on public.produtos;
-create policy "pdv_produtos_acesso" on public.produtos
-  for all to anon, authenticated
-  using (true) with check (true);
+drop policy if exists "pdv_vendas_leitura"  on public.vendas;
+drop policy if exists "pdv_vendas_insercao" on public.vendas;
 
-drop policy if exists "pdv_vendas_leitura" on public.vendas;
-create policy "pdv_vendas_leitura" on public.vendas
-  for select to anon, authenticated
+-- Perfis: cada um vê o próprio; o admin vê todos (para o filtro do relatório).
+drop policy if exists "pdv_perfis_leitura" on public.perfis;
+create policy "pdv_perfis_leitura" on public.perfis
+  for select to authenticated
+  using (id = auth.uid() or eh_admin());
+
+-- Produtos: todo usuário logado vê (para vender); só o admin altera.
+drop policy if exists "pdv_produtos_leitura" on public.produtos;
+create policy "pdv_produtos_leitura" on public.produtos
+  for select to authenticated
   using (true);
 
-drop policy if exists "pdv_vendas_insercao" on public.vendas;
-create policy "pdv_vendas_insercao" on public.vendas
-  for insert to anon, authenticated
-  with check (true);
+drop policy if exists "pdv_produtos_admin_inclui" on public.produtos;
+create policy "pdv_produtos_admin_inclui" on public.produtos
+  for insert to authenticated
+  with check (eh_admin());
 
-grant select, insert, update, delete on public.produtos to anon, authenticated;
-grant select, insert                 on public.vendas   to anon, authenticated;
-grant execute on function public.registrar_venda(bigint, integer, numeric)   to anon, authenticated;
-grant execute on function public.relatorio_vendas(timestamptz, timestamptz) to anon, authenticated;
+drop policy if exists "pdv_produtos_admin_altera" on public.produtos;
+create policy "pdv_produtos_admin_altera" on public.produtos
+  for update to authenticated
+  using (eh_admin()) with check (eh_admin());
+
+drop policy if exists "pdv_produtos_admin_exclui" on public.produtos;
+create policy "pdv_produtos_admin_exclui" on public.produtos
+  for delete to authenticated
+  using (eh_admin());
+
+-- Vendas: gravadas só pela função registrar_venda; o vendedor vê as
+-- próprias e o admin vê todas.
+drop policy if exists "pdv_vendas_leitura_logado" on public.vendas;
+create policy "pdv_vendas_leitura_logado" on public.vendas
+  for select to authenticated
+  using (usuario_id = auth.uid() or eh_admin());
+
+revoke all on public.perfis, public.produtos, public.vendas from anon;
+revoke all on public.perfis, public.produtos, public.vendas from authenticated;
+grant select                         on public.perfis   to authenticated;
+grant select, insert, update, delete on public.produtos to authenticated;
+grant select                         on public.vendas   to authenticated;
+
+-- Funções: no PostgreSQL toda função nasce executável por qualquer um
+-- (PUBLIC); aqui fica só para quem está logado.
+revoke execute on function public.criar_perfil()                                          from public, anon, authenticated;
+revoke execute on function public.eh_admin()                                              from public, anon;
+revoke execute on function public.registrar_venda(bigint, integer, numeric)               from public, anon;
+revoke execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid)        from public, anon;
+grant  execute on function public.eh_admin()                                              to authenticated;
+grant  execute on function public.registrar_venda(bigint, integer, numeric)               to authenticated;
+grant  execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid)        to authenticated;
+
+-- =====================================================================
+-- Depois de criar o seu usuário em Authentication → Users, torne-o admin
+-- trocando o e-mail abaixo e rodando só esta linha:
+--
+--   update public.perfis set admin = true
+--    where id = (select id from auth.users where email = 'seu-email@exemplo.com');
+-- =====================================================================

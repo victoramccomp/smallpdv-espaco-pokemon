@@ -1,9 +1,11 @@
-// Tela: Relatório de Venda por Produto
+// Tela: Relatório de Venda por Produto (somente admin)
 (function () {
   const filtros = document.querySelectorAll('.filtros button');
+  const campoVendedor = document.getElementById('vendedor');
   const corpo = document.getElementById('corpo-tabela');
   const totalItens = document.getElementById('total-itens');
   const totalValor = document.getElementById('total-valor');
+  let periodoAtual = 'tudo';
   let ultimoCarregamento = 0;
 
   // Início do período no horário local do aparelho (null = desde sempre).
@@ -16,14 +18,23 @@
     return null;
   }
 
-  async function carregar(periodo) {
-    filtros.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.periodo === periodo)));
+  async function carregarVendedores() {
+    try {
+      const vendedores = await Api.listarVendedores();
+      for (const v of vendedores) campoVendedor.add(new Option(v.nome, v.id));
+    } catch (erro) {
+      avisar(erro.message, 'erro');
+    }
+  }
+
+  async function carregar() {
+    filtros.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.periodo === periodoAtual)));
     corpo.innerHTML = '<tr><td colspan="3" class="vazio">Carregando…</td></tr>';
 
     const esteCarregamento = ++ultimoCarregamento;
     let linhas;
     try {
-      linhas = await Api.relatorioVendas(inicioDoPeriodo(periodo), null);
+      linhas = await Api.relatorioVendas(inicioDoPeriodo(periodoAtual), null, campoVendedor.value);
       if (esteCarregamento !== ultimoCarregamento) return; // outro filtro foi tocado depois
     } catch (erro) {
       if (esteCarregamento !== ultimoCarregamento) return;
@@ -50,7 +61,14 @@
     ).join('');
   }
 
-  filtros.forEach((b) => b.addEventListener('click', () => carregar(b.dataset.periodo)));
+  filtros.forEach((b) => b.addEventListener('click', () => {
+    periodoAtual = b.dataset.periodo;
+    carregar();
+  }));
+  campoVendedor.addEventListener('change', carregar);
 
-  carregar('tudo');
+  iniciarPagina({ somenteAdmin: true }).then(() => {
+    carregarVendedores();
+    carregar();
+  });
 })();

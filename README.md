@@ -9,14 +9,20 @@ estoque) e mostra o relatório de vendas por produto.
 
 ## Telas
 
-| Arquivo | Tela | O que faz |
-|---|---|---|
-| `index.html` | Registro de Venda | Escolhe o produto → o valor de venda já vem preenchido (dá para alterar) → digita a quantidade → registra. Mostra o total e o estoque disponível. |
-| `produtos.html` | Cadastro de Produto | Nome, quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
-| `relatorio.html` | Relatório de Venda por Produto | Nome do produto, quantidade vendida e valor total, com filtro Hoje / 7 dias / Mês / Tudo. |
+| Arquivo | Tela | Quem acessa | O que faz |
+|---|---|---|---|
+| `login.html` | Login | todos | E-mail e senha cadastrados pelo admin. |
+| `index.html` | Registro de Venda | todos | Escolhe o produto → o valor de venda já vem preenchido (dá para alterar) → digita a quantidade → registra. Mostra o total e o estoque disponível. |
+| `produtos.html` | Cadastro de Produto | admin | Nome, quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
+| `relatorio.html` | Relatório de Venda por Produto | admin | Nome do produto, quantidade vendida e valor total, com filtro por vendedor e por período (Hoje / 7 dias / Mês / Tudo). |
+
+Vendedores (não admin) veem só a tela de venda; as abas de navegação aparecem apenas para o admin.
 
 Regras que ficam no banco (`supabase/schema.sql`):
 
+- Cada venda grava quem a registrou — sempre o usuário logado, definido pelo próprio banco.
+- Vendedor só lê produtos e registra vendas; cadastrar/alterar produtos e ver o relatório é só do admin.
+  Isso é garantido pelas permissões do banco (RLS), não apenas escondendo telas.
 - A venda baixa o estoque na mesma transação; se não houver estoque suficiente, a venda é recusada.
 - Cada venda guarda o valor unitário usado naquele momento — mudar o preço do produto depois
   não altera vendas antigas.
@@ -33,6 +39,29 @@ Regras que ficam no banco (`supabase/schema.sql`):
 4. Cole os dois valores em [`js/config.js`](js/config.js).
 
 > Nunca use a *secret key* / *service_role* no `config.js`: tudo nesse arquivo fica visível no navegador.
+
+### Usuários
+
+1. **Feche o cadastro público:** *Authentication → Sign In / Providers* → desligue
+   **Allow new users to sign up**. Sem isso, qualquer pessoa cria uma conta e entra no app.
+2. **Crie cada usuário:** *Authentication → Users → Add user → Create new user*, com e-mail e
+   senha e a opção **Auto Confirm User** marcada. O perfil é criado sozinho, com o nome igual ao
+   começo do e-mail.
+3. **Torne-se admin** (uma vez), no SQL Editor, com o seu e-mail:
+   ```sql
+   update public.perfis set admin = true
+    where id = (select id from auth.users where email = 'seu-email@exemplo.com');
+   ```
+4. **Nome que aparece no app e no filtro do relatório:** *Table Editor → perfis* → edite a coluna `nome`.
+
+Para tirar o acesso de alguém, prefira **Ban user** (em *Authentication → Users*) a excluir: as
+vendas da pessoa continuam atribuídas a ela no relatório.
+
+### Atualizando um banco de uma versão anterior
+
+O `schema.sql` pode ser executado de novo por cima: ele cria o que falta (perfis, coluna do
+vendedor) e troca as permissões públicas pelas de usuário logado. Vendas registradas antes do
+login ficam sem vendedor — aparecem em "Todos os vendedores", mas em nenhum vendedor específico.
 
 ## 2. Rodar no computador
 
@@ -56,23 +85,24 @@ vercel --prod # publica na URL definitiva
 
 O `.vercelignore` impede que `supabase/`, este README e o `.bat` sejam publicados.
 
-## Segurança — leia antes de divulgar o link
+## Segurança
 
-O app **não tem login**. As permissões do `schema.sql` liberam leitura e escrita para a chave
-pública, então quem tiver o link do site consegue ver e alterar produtos e registrar vendas.
-Serve bem para uso pessoal com o link guardado só com você. Se o link for circular, o próximo passo
-é adicionar login (Supabase Auth com e-mail e senha) e trocar as políticas para `authenticated`.
+- Sem login, a chave pública não lê nem grava nada: todas as permissões exigem usuário logado.
+- O login dura enquanto o celular estiver usando o app: o acesso do Supabase vence a cada hora e é
+  renovado automaticamente. "Sair" encerra a sessão naquele aparelho.
+- Mantenha o cadastro público desligado (veja *Usuários* acima).
 
 ## Estrutura
 
 ```
+login.html         Login
 index.html         Registro de Venda
 produtos.html      Cadastro de Produto
 relatorio.html     Relatório de Venda por Produto
 css/estilo.css     visual das três telas (claro/escuro automático)
 js/config.js       URL e chave pública do Supabase  ← preencher
-js/api.js          chamadas à API REST do Supabase
-js/comum.js        formatação de R$, leitura de números, avisos
-js/venda.js | produtos.js | relatorio.js   lógica de cada tela
-supabase/schema.sql  tabelas, funções e permissões
+js/api.js          login/sessão (Supabase Auth) e chamadas à API REST
+js/comum.js        formatação de R$, leitura de números, avisos, checagem de login
+js/login.js | venda.js | produtos.js | relatorio.js   lógica de cada tela
+supabase/schema.sql  tabelas, perfis, funções e permissões
 ```

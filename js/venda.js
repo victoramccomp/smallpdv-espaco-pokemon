@@ -113,5 +113,5 @@
     }
   });
 
-  carregarProdutos();
+  iniciarPagina().then(carregarProdutos);
 })();
