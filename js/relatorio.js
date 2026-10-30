@@ -2,6 +2,7 @@
 (function () {
   const filtros = document.querySelectorAll('.filtros button');
   const campoVendedor = document.getElementById('vendedor');
+  const campoFornecedor = document.getElementById('fornecedor');
   const corpo = document.getElementById('corpo-tabela');
   const totalItens = document.getElementById('total-itens');
   const totalValor = document.getElementById('total-valor');
@@ -18,10 +19,11 @@
     return null;
   }
 
-  async function carregarVendedores() {
+  async function carregarFiltros() {
     try {
-      const vendedores = await Api.listarVendedores();
+      const [vendedores, fornecedores] = await Promise.all([Api.listarVendedores(), Api.listarFornecedores()]);
       for (const v of vendedores) campoVendedor.add(new Option(v.nome, v.id));
+      for (const f of fornecedores) campoFornecedor.add(new Option(f.nome, f.id));
     } catch (erro) {
       avisar(erro.message, 'erro');
     }
@@ -34,7 +36,7 @@
     const esteCarregamento = ++ultimoCarregamento;
     let linhas;
     try {
-      linhas = await Api.relatorioVendas(inicioDoPeriodo(periodoAtual), null, campoVendedor.value);
+      linhas = await Api.relatorioVendas(inicioDoPeriodo(periodoAtual), null, campoVendedor.value, campoFornecedor.value);
       if (esteCarregamento !== ultimoCarregamento) return; // outro filtro foi tocado depois
     } catch (erro) {
       if (esteCarregamento !== ultimoCarregamento) return;
@@ -66,9 +68,10 @@
     carregar();
   }));
   campoVendedor.addEventListener('change', carregar);
+  campoFornecedor.addEventListener('change', carregar);
 
   iniciarPagina({ somenteAdmin: true }).then(() => {
-    carregarVendedores();
+    carregarFiltros();
     carregar();
   });
 })();

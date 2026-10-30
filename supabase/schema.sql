@@ -6,7 +6,7 @@
 --
 -- Acesso:
 --   * só usuários logados (Supabase Auth) usam o app;
---   * admin   → cadastra/edita produtos, vê o relatório, registra vendas;
+--   * admin   → cadastra fornecedores e produtos, vê o relatório, registra vendas;
 --   * demais  → apenas registram vendas.
 -- =====================================================================
 
@@ -59,6 +59,15 @@ $$;
 
 -- ---------- Tabelas ----------
 
+create table if not exists public.fornecedores (
+  id        bigint generated always as identity primary key,
+  nome      text        not null check (length(trim(nome)) > 0),
+  criado_em timestamptz not null default now()
+);
+
+-- Não deixa cadastrar o mesmo fornecedor duas vezes ("Loja X" = "loja x ").
+create unique index if not exists fornecedores_nome_unico on public.fornecedores (lower(trim(nome)));
+
 create table if not exists public.produtos (
   id          bigint generated always as identity primary key,
   nome        text          not null check (length(trim(nome)) > 0),
@@ -76,6 +85,13 @@ create table if not exists public.vendas (
   valor_total    numeric(12,2) generated always as (quantidade * valor_unitario) stored,
   criado_em      timestamptz   not null default now()
 );
+
+-- Fornecedor do produto (opcional por enquanto). "restrict": fornecedor
+-- com produtos vinculados não pode ser excluído.
+alter table public.produtos
+  add column if not exists fornecedor_id bigint references public.fornecedores(id) on delete restrict;
+
+create index if not exists produtos_fornecedor_id_idx on public.produtos (fornecedor_id);
 
 -- Quem registrou a venda (vendas anteriores ao login ficam sem vendedor).
 alter table public.vendas
@@ -136,14 +152,18 @@ $$;
 
 -- ---------- Relatório de venda por produto ----------
 -- Sem datas = todo o período. p_fim é exclusivo (vendas antes de p_fim).
--- p_usuario_id = null → todos os vendedores. Só o admin recebe linhas.
+-- p_usuario_id = null → todos os vendedores.
+-- p_fornecedor_id = null → todos os fornecedores (usa o fornecedor atual
+-- do produto). Só o admin recebe linhas.
 
 drop function if exists public.relatorio_vendas(timestamptz, timestamptz);
+drop function if exists public.relatorio_vendas(timestamptz, timestamptz, uuid);
 
 create or replace function public.relatorio_vendas(
-  p_inicio     timestamptz default null,
-  p_fim        timestamptz default null,
-  p_usuario_id uuid        default null
+  p_inicio        timestamptz default null,
+  p_fim           timestamptz default null,
+  p_usuario_id    uuid        default null,
+  p_fornecedor_id bigint      default null
 )
 returns table (
   produto_id         bigint,
@@ -164,16 +184,18 @@ as $$
    where eh_admin()
      and (p_inicio     is null or v.criado_em >= p_inicio)
      and (p_fim        is null or v.criado_em <  p_fim)
-     and (p_usuario_id is null or v.usuario_id = p_usuario_id)
+     and (p_usuario_id    is null or v.usuario_id    = p_usuario_id)
+     and (p_fornecedor_id is null or p.fornecedor_id = p_fornecedor_id)
    group by p.id, p.nome
    order by sum(v.valor_total) desc, p.nome;
 $$;
 
 -- ---------- Permissões ----------
 
-alter table public.perfis   enable row level security;
-alter table public.produtos enable row level security;
-alter table public.vendas   enable row level security;
+alter table public.perfis       enable row level security;
+alter table public.fornecedores enable row level security;
+alter table public.produtos     enable row level security;
+alter table public.vendas       enable row level security;
 
 -- Remove as políticas da versão sem login (acesso público).
 drop policy if exists "pdv_produtos_acesso" on public.produtos;
@@ -185,6 +207,12 @@ drop policy if exists "pdv_perfis_leitura" on public.perfis;
 create policy "pdv_perfis_leitura" on public.perfis
   for select to authenticated
   using (id = auth.uid() or eh_admin());
+
+-- Fornecedores: só o admin vê e altera.
+drop policy if exists "pdv_fornecedores_admin" on public.fornecedores;
+create policy "pdv_fornecedores_admin" on public.fornecedores
+  for all to authenticated
+  using (eh_admin()) with check (eh_admin());
 
 -- Produtos: todo usuário logado vê (para vender); só o admin altera.
 drop policy if exists "pdv_produtos_leitura" on public.produtos;
@@ -214,21 +242,22 @@ create policy "pdv_vendas_leitura_logado" on public.vendas
   for select to authenticated
   using (usuario_id = auth.uid() or eh_admin());
 
-revoke all on public.perfis, public.produtos, public.vendas from anon;
-revoke all on public.perfis, public.produtos, public.vendas from authenticated;
-grant select                         on public.perfis   to authenticated;
-grant select, insert, update, delete on public.produtos to authenticated;
-grant select                         on public.vendas   to authenticated;
+revoke all on public.perfis, public.fornecedores, public.produtos, public.vendas from anon;
+revoke all on public.perfis, public.fornecedores, public.produtos, public.vendas from authenticated;
+grant select                         on public.perfis       to authenticated;
+grant select, insert, update, delete on public.fornecedores to authenticated;
+grant select, insert, update, delete on public.produtos     to authenticated;
+grant select                         on public.vendas       to authenticated;
 
 -- Funções: no PostgreSQL toda função nasce executável por qualquer um
 -- (PUBLIC); aqui fica só para quem está logado.
 revoke execute on function public.criar_perfil()                                          from public, anon, authenticated;
 revoke execute on function public.eh_admin()                                              from public, anon;
 revoke execute on function public.registrar_venda(bigint, integer, numeric)               from public, anon;
-revoke execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid)        from public, anon;
+revoke execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid, bigint) from public, anon;
 grant  execute on function public.eh_admin()                                              to authenticated;
 grant  execute on function public.registrar_venda(bigint, integer, numeric)               to authenticated;
-grant  execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid)        to authenticated;
+grant  execute on function public.relatorio_vendas(timestamptz, timestamptz, uuid, bigint) to authenticated;
 
 -- =====================================================================
 -- Depois de criar o seu usuário em Authentication → Users, torne-o admin

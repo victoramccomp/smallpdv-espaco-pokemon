@@ -127,14 +127,16 @@
       return requisicao(caminho, opcoes, true);
     }
     if (resposta.status === 401) return irParaLogin();
-    if (!resposta.ok) throw new Error(traduzirErro(dados, resposta.status));
+    if (!resposta.ok) {
+      if (dados && dados.code === '23503' && opcoes.erroVinculo) throw new Error(opcoes.erroVinculo);
+      throw new Error(traduzirErro(dados, resposta.status));
+    }
     return dados;
   }
 
   function traduzirErro(erro, status) {
-    if (erro && erro.code === '23503') {
-      return 'Este produto já tem vendas registradas e não pode ser excluído.';
-    }
+    if (erro && erro.code === '23503') return 'Este cadastro está em uso e não pode ser excluído.';
+    if (erro && erro.code === '23505') return 'Já existe um cadastro com esse nome.';
     if (erro && erro.code === '23514') return 'Valor inválido: confira os números digitados.';
     if (erro && erro.code === '42501') return 'Você não tem permissão para isso. Fale com o admin.';
     if (status === 403) return 'Você não tem permissão para isso. Fale com o admin.';
@@ -181,10 +183,34 @@
       return requisicao('perfis?select=id,nome&order=nome.asc');
     },
 
+    // ----- fornecedores -----
+
+    listarFornecedores() {
+      return requisicao('fornecedores?select=id,nome&order=nome.asc');
+    },
+
+    criarFornecedor(fornecedor) {
+      return requisicao('fornecedores', { method: 'POST', body: fornecedor, prefer: 'return=minimal' });
+    },
+
+    atualizarFornecedor(id, fornecedor) {
+      return requisicao('fornecedores?id=eq.' + encodeURIComponent(id), {
+        method: 'PATCH', body: fornecedor, prefer: 'return=minimal'
+      });
+    },
+
+    excluirFornecedor(id) {
+      return requisicao('fornecedores?id=eq.' + encodeURIComponent(id), {
+        method: 'DELETE',
+        erroVinculo: 'Este fornecedor tem produtos vinculados. Troque o fornecedor desses produtos antes de excluir.'
+      });
+    },
+
     // ----- produtos e vendas -----
 
+    // fornecedor: { nome } — vem vazio para quem não é admin
     listarProdutos() {
-      return requisicao('produtos?select=id,nome,estoque,valor_venda&order=nome.asc');
+      return requisicao('produtos?select=id,nome,estoque,valor_venda,fornecedor_id,fornecedor:fornecedores(nome)&order=nome.asc');
     },
 
     criarProduto(produto) {
@@ -198,7 +224,10 @@
     },
 
     excluirProduto(id) {
-      return requisicao('produtos?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+      return requisicao('produtos?id=eq.' + encodeURIComponent(id), {
+        method: 'DELETE',
+        erroVinculo: 'Este produto já tem vendas registradas e não pode ser excluído.'
+      });
     },
 
     registrarVenda(produtoId, quantidade, valorUnitario) {
@@ -208,14 +237,15 @@
       });
     },
 
-    // inicio/fim: Date ou null (null = sem limite); usuarioId: null = todos
-    relatorioVendas(inicio, fim, usuarioId) {
+    // inicio/fim: Date ou null (null = sem limite); usuarioId/fornecedorId: null = todos
+    relatorioVendas(inicio, fim, usuarioId, fornecedorId) {
       return requisicao('rpc/relatorio_vendas', {
         method: 'POST',
         body: {
           p_inicio: inicio ? inicio.toISOString() : null,
           p_fim: fim ? fim.toISOString() : null,
-          p_usuario_id: usuarioId || null
+          p_usuario_id: usuarioId || null,
+          p_fornecedor_id: fornecedorId ? Number(fornecedorId) : null
         }
       });
     }

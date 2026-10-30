@@ -208,6 +208,7 @@ input[aria-invalid="true"] { border-color: var(--perigo); }
 .item-produto .nome { font-weight: 600; overflow-wrap: anywhere; }
 .item-produto .estoque { display: block; font-size: .875rem; color: var(--texto-suave); }
 .item-produto .estoque.zerado { color: var(--perigo); font-weight: 600; }
+.item-produto .fornecedor { display: block; font-size: .8rem; color: var(--texto-suave); overflow-wrap: anywhere; }
 .item-produto .preco { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .vazio { text-align: center; color: var(--texto-suave); padding: 24px 8px; }
@@ -250,7 +251,7 @@ input[aria-invalid="true"] { border-color: var(--perigo); }
   left: 0; right: 0; bottom: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: var(--superficie);
   border-top: 1px solid var(--borda);
   padding-bottom: env(safe-area-inset-bottom);

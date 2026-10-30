@@ -5,6 +5,7 @@
   const campoNome = document.getElementById('nome');
   const campoEstoque = document.getElementById('estoque');
   const campoValor = document.getElementById('valor-venda');
+  const campoFornecedor = document.getElementById('fornecedor');
   const botaoSalvar = document.getElementById('btn-salvar');
   const botaoCancelar = document.getElementById('btn-cancelar');
   const botaoExcluir = document.getElementById('btn-excluir');
@@ -25,6 +26,17 @@
     desenharLista();
   }
 
+  async function carregarFornecedores() {
+    try {
+      const fornecedores = await Api.listarFornecedores();
+      for (const f of fornecedores) campoFornecedor.add(new Option(f.nome, f.id));
+      // Se um produto já foi aberto para edição antes da lista chegar.
+      if (emEdicao) campoFornecedor.value = emEdicao.fornecedor_id || '';
+    } catch (erro) {
+      avisar(erro.message, 'erro');
+    }
+  }
+
   function desenharLista() {
     contagem.textContent = produtos.length ? '(' + produtos.length + ')' : '';
     if (!produtos.length) {
@@ -34,9 +46,11 @@
     lista.innerHTML = produtos.map((p) => {
       const textoEstoque = p.estoque > 0 ? 'Estoque: ' + p.estoque : 'Sem estoque';
       const editando = emEdicao && emEdicao.id === p.id ? ' editando' : '';
+      const fornecedor = p.fornecedor ? escaparHtml(p.fornecedor.nome) : 'Sem fornecedor';
       return '<li><button type="button" class="item-produto' + editando + '" data-id="' + p.id + '">' +
         '<span><span class="nome">' + escaparHtml(p.nome) + '</span>' +
-        '<span class="estoque' + (p.estoque > 0 ? '' : ' zerado') + '">' + textoEstoque + '</span></span>' +
+        '<span class="estoque' + (p.estoque > 0 ? '' : ' zerado') + '">' + textoEstoque + '</span>' +
+        '<span class="fornecedor">' + fornecedor + '</span></span>' +
         '<span class="preco">' + formatarDinheiro(p.valor_venda) + '</span>' +
         '</button></li>';
     }).join('');
@@ -58,6 +72,7 @@
     campoNome.value = produto.nome;
     campoEstoque.value = produto.estoque;
     campoValor.value = valorParaCampo(produto.valor_venda);
+    campoFornecedor.value = produto.fornecedor_id || '';
     tituloForm.textContent = 'Editar produto';
     botaoSalvar.textContent = 'Salvar alterações';
     botaoCancelar.hidden = false;
@@ -100,7 +115,12 @@
     if (!Number.isFinite(estoque)) return erroNoCampo(campoEstoque, 'Digite o estoque (número inteiro, 0 ou mais).');
     if (!Number.isFinite(valor)) return erroNoCampo(campoValor, 'Digite um valor válido, ex.: 12,50');
 
-    const dados = { nome, estoque, valor_venda: valor };
+    const dados = {
+      nome,
+      estoque,
+      valor_venda: valor,
+      fornecedor_id: campoFornecedor.value ? Number(campoFornecedor.value) : null
+    };
     const eraNovo = !emEdicao;
     const textoOriginal = botaoSalvar.textContent;
     botaoSalvar.disabled = true;
@@ -137,5 +157,8 @@
     }
   });
 
-  iniciarPagina({ somenteAdmin: true }).then(carregarProdutos);
+  iniciarPagina({ somenteAdmin: true }).then(() => {
+    carregarFornecedores();
+    carregarProdutos();
+  });
 })();

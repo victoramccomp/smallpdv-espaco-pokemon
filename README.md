@@ -1,7 +1,7 @@
 # SmallPDVMobile
 
-PDV simples para o celular: cadastra produtos, registra vendas (com baixa automática de
-estoque) e mostra o relatório de vendas por produto.
+PDV simples para o celular: cadastra fornecedores e produtos, registra vendas (com baixa
+automática de estoque) e mostra o relatório de vendas por produto.
 
 - **Front-end:** HTML, CSS e JavaScript puros — sem frameworks, sem npm, sem build.
 - **Banco:** Supabase (PostgreSQL), acessado direto pela API REST.
@@ -13,20 +13,25 @@ estoque) e mostra o relatório de vendas por produto.
 |---|---|---|---|
 | `login.html` | Login | todos | E-mail e senha cadastrados pelo admin. |
 | `index.html` | Registro de Venda | todos | Escolhe o produto → o valor de venda já vem preenchido (dá para alterar) → digita a quantidade → registra. Mostra o total e o estoque disponível. |
-| `produtos.html` | Cadastro de Produto | admin | Nome, quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
-| `relatorio.html` | Relatório de Venda por Produto | admin | Nome do produto, quantidade vendida e valor total, com filtro por vendedor e por período (Hoje / 7 dias / Mês / Tudo). |
+| `produtos.html` | Cadastro de Produto | admin | Nome, fornecedor (opcional), quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
+| `fornecedores.html` | Cadastro de Fornecedor | admin | Nome do fornecedor. Toque num fornecedor da lista para editar ou excluir. |
+| `relatorio.html` | Relatório de Venda por Produto | admin | Nome do produto, quantidade vendida e valor total, com filtros por vendedor, por fornecedor e por período (Hoje / 7 dias / Mês / Tudo). Com um fornecedor escolhido, o "Valor total" é o total vendido daquele fornecedor. |
 
 Vendedores (não admin) veem só a tela de venda; as abas de navegação aparecem apenas para o admin.
 
 Regras que ficam no banco (`supabase/schema.sql`):
 
 - Cada venda grava quem a registrou — sempre o usuário logado, definido pelo próprio banco.
-- Vendedor só lê produtos e registra vendas; cadastrar/alterar produtos e ver o relatório é só do admin.
+- Vendedor só lê produtos e registra vendas; fornecedores, produtos e relatório são só do admin.
   Isso é garantido pelas permissões do banco (RLS), não apenas escondendo telas.
 - A venda baixa o estoque na mesma transação; se não houver estoque suficiente, a venda é recusada.
 - Cada venda guarda o valor unitário usado naquele momento — mudar o preço do produto depois
   não altera vendas antigas.
 - Produto que já tem vendas não pode ser excluído (para não sumir do relatório).
+- Fornecedor com produtos vinculados não pode ser excluído, e não há dois fornecedores com o mesmo
+  nome (maiúsculas/minúsculas e espaços nas pontas não contam).
+- O filtro por fornecedor usa o fornecedor **atual** de cada produto: se um produto trocar de
+  fornecedor, as vendas antigas dele passam a contar para o novo.
 
 ## 1. Criar o banco no Supabase
 
@@ -59,7 +64,7 @@ vendas da pessoa continuam atribuídas a ela no relatório.
 
 ### Atualizando um banco de uma versão anterior
 
-O `schema.sql` pode ser executado de novo por cima: ele cria o que falta (perfis, coluna do
+O `schema.sql` pode ser executado de novo por cima: ele cria o que falta (perfis, fornecedores, coluna do
 vendedor) e troca as permissões públicas pelas de usuário logado. Vendas registradas antes do
 login ficam sem vendedor — aparecem em "Todos os vendedores", mas em nenhum vendedor específico.
 
@@ -98,11 +103,12 @@ O `.vercelignore` impede que `supabase/`, este README e o `.bat` sejam publicado
 login.html         Login
 index.html         Registro de Venda
 produtos.html      Cadastro de Produto
+fornecedores.html  Cadastro de Fornecedor
 relatorio.html     Relatório de Venda por Produto
 css/estilo.css     visual das três telas (claro/escuro automático)
 js/config.js       URL e chave pública do Supabase  ← preencher
 js/api.js          login/sessão (Supabase Auth) e chamadas à API REST
 js/comum.js        formatação de R$, leitura de números, avisos, checagem de login
-js/login.js | venda.js | produtos.js | relatorio.js   lógica de cada tela
-supabase/schema.sql  tabelas, perfis, funções e permissões
+js/login.js | venda.js | produtos.js | fornecedores.js | relatorio.js   lógica de cada tela
+supabase/schema.sql  tabelas, perfis, funções e permissões (rode de novo a cada atualização)
 ```

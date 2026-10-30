@@ -17,12 +17,20 @@
   </header>
 
   <main class="conteudo">
-    <label class="campo">
-      <span>Vendedor</span>
-      <select id="vendedor">
-        <option value="">Todos os vendedores</option>
-      </select>
-    </label>
+    <div class="linha">
+      <label class="campo">
+        <span>Vendedor</span>
+        <select id="vendedor">
+          <option value="">Todos</option>
+        </select>
+      </label>
+      <label class="campo">
+        <span>Fornecedor</span>
+        <select id="fornecedor">
+          <option value="">Todos</option>
+        </select>
+      </label>
+    </div>
 
     <div class="filtros" role="group" aria-label="Período">
       <button type="button" data-periodo="hoje" aria-pressed="false">Hoje</button>
@@ -56,6 +64,10 @@
     <a href="produtos.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
       Produtos
+    </a>
+    <a href="fornecedores.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h12v11H2z"/><path d="M14 10h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+      Fornecedores
     </a>
     <a href="relatorio.html" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-8"/></svg>
