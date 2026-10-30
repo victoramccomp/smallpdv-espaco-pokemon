@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b8a91">
+  <title>Relatório · PDV</title>
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+  <header class="topo"><h1>Vendas por produto</h1></header>
+
+  <main class="conteudo">
+    <div class="filtros" role="group" aria-label="Período">
+      <button type="button" data-periodo="hoje" aria-pressed="false">Hoje</button>
+      <button type="button" data-periodo="7dias" aria-pressed="false">7 dias</button>
+      <button type="button" data-periodo="mes" aria-pressed="false">Mês</button>
+      <button type="button" data-periodo="tudo" aria-pressed="true">Tudo</button>
+    </div>
+
+    <div class="cartao resumo">
+      <div><span>Itens vendidos</span><strong id="total-itens">–</strong></div>
+      <div><span>Valor total</span><strong id="total-valor">–</strong></div>
+    </div>
+
+    <div class="cartao tabela-cartao">
+      <table class="tabela">
+        <thead>
+          <tr><th>Produto</th><th class="num">Qtd.</th><th class="num">Total</th></tr>
+        </thead>
+        <tbody id="corpo-tabela">
+          <tr><td colspan="3" class="vazio">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <nav class="abas" aria-label="Telas">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L21 8H6"/></svg>
+      Venda
+    </a>
+    <a href="produtos.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+      Produtos
+    </a>
+    <a href="relatorio.html" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-8"/></svg>
+      Relatório
+    </a>
+  </nav>
+
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="js/relatorio.js"></script>
+</body>
+</html>

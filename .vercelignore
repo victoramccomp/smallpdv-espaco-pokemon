@@ -1,0 +1,4 @@
+# Arquivos que não precisam ir para o site publicado
+supabase/
+README.md
+iniciar-servidor.bat

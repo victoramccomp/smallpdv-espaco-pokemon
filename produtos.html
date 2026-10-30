@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b8a91">
+  <title>Produtos · PDV</title>
+  <link rel="icon" href="img/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+  <header class="topo"><h1>Cadastro de produto</h1></header>
+
+  <main class="conteudo">
+    <form id="form-produto" class="cartao" novalidate>
+      <h2 id="titulo-form">Novo produto</h2>
+
+      <label class="campo">
+        <span>Nome do produto</span>
+        <input id="nome" maxlength="120" autocomplete="off" required>
+      </label>
+
+      <div class="linha">
+        <label class="campo">
+          <span>Estoque</span>
+          <input id="estoque" type="number" inputmode="numeric" min="0" step="1" placeholder="0" required>
+        </label>
+        <label class="campo">
+          <span>Valor de venda (R$)</span>
+          <input id="valor-venda" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
+        </label>
+      </div>
+
+      <div class="acoes">
+        <button class="botao secundario" type="button" id="btn-cancelar" hidden>Cancelar</button>
+        <button class="botao" type="submit" id="btn-salvar">Cadastrar produto</button>
+      </div>
+      <button class="botao-texto-perigo" type="button" id="btn-excluir" hidden>Excluir produto</button>
+    </form>
+
+    <h2 class="titulo-secao">Produtos cadastrados <span id="contagem"></span></h2>
+    <ul id="lista-produtos" class="lista">
+      <li class="vazio">Carregando…</li>
+    </ul>
+  </main>
+
+  <nav class="abas" aria-label="Telas">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L21 8H6"/></svg>
+      Venda
+    </a>
+    <a href="produtos.html" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+      Produtos
+    </a>
+    <a href="relatorio.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-8"/></svg>
+      Relatório
+    </a>
+  </nav>
+
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="js/produtos.js"></script>
+</body>
+</html>
