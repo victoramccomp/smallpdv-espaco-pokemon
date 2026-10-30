@@ -5,6 +5,6 @@
 // Essas duas informações são públicas por natureza (vão para o navegador).
 // NUNCA coloque aqui a "secret key" / "service_role".
 window.PDV_CONFIG = {
-  supabaseUrl: 'https://SEU-PROJETO.supabase.co',
-  supabaseKey: 'SUA_CHAVE_PUBLICA'
+  supabaseUrl: 'https://owqbhrspcrpdoaqvzzhx.supabase.co',
+  supabaseKey: 'sb_publishable_6IFLeZ-fAkUC0ovw1jrzPg_r6Vyvvwd'
 };
