@@ -1,7 +1,7 @@
 # SmallPDVMobile
 
-PDV simples para o celular: cadastra fornecedores e produtos, registra vendas (com baixa
-automática de estoque) e mostra o relatório de vendas por produto.
+PDV simples para o celular: cadastra fornecedores e produtos (com código de barras), registra
+pedidos com vários itens, calcula o troco, baixa o estoque e mostra o relatório de vendas por produto.
 
 - **Front-end:** HTML, CSS e JavaScript puros — sem frameworks, sem npm, sem build.
 - **Banco:** Supabase (PostgreSQL), acessado direto pela API REST.
@@ -12,19 +12,27 @@ automática de estoque) e mostra o relatório de vendas por produto.
 | Arquivo | Tela | Quem acessa | O que faz |
 |---|---|---|---|
 | `login.html` | Login | todos | E-mail e senha cadastrados pelo admin. |
-| `index.html` | Registro de Venda | todos | Escolhe o produto → o valor de venda já vem preenchido (dá para alterar) → digita a quantidade → registra. Mostra o total e o estoque disponível. |
-| `produtos.html` | Cadastro de Produto | admin | Nome, fornecedor (opcional), quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
+| `index.html` | Registro de Venda | todos | Monta o **pedido**: escolhe o produto (na lista ou pelo botão da câmera, que lê o código de barras) → o valor de venda já vem preenchido (dá para alterar) → quantidade → "Adicionar ao pedido". Os itens vão somando no total; dá para mudar a quantidade (− / +) ou remover. "Recebido em dinheiro" calcula o troco. "Registrar venda" finaliza o pedido. Abaixo ficam os pedidos já feitos: toque num deles para editar ou cancelar. |
+| `produtos.html` | Cadastro de Produto | admin | Nome, código de barras (opcional, digitado ou lido pela câmera), fornecedor (opcional), quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
 | `fornecedores.html` | Cadastro de Fornecedor | admin | Nome do fornecedor. Toque num fornecedor da lista para editar ou excluir. |
 | `relatorio.html` | Relatório de Venda por Produto | admin | Nome do produto, quantidade vendida e valor total, com filtros por vendedor, por fornecedor e por período (Hoje / 7 dias / Mês / Tudo). Com um fornecedor escolhido, o "Valor total" é o total vendido daquele fornecedor. |
 
-Vendedores (não admin) veem só a tela de venda; as abas de navegação aparecem apenas para o admin.
+Vendedores (não admin) veem só a tela de venda e só os próprios pedidos; as abas de navegação
+aparecem apenas para o admin, que vê e edita os pedidos de todos.
+
+O pedido em montagem fica guardado no celular: se a página recarregar, os itens continuam lá.
 
 Regras que ficam no banco (`supabase/schema.sql`):
 
-- Cada venda grava quem a registrou — sempre o usuário logado, definido pelo próprio banco.
+- Cada pedido grava quem o registrou — sempre o usuário logado, definido pelo próprio banco.
+  Editar um pedido mantém o vendedor e a data originais.
 - Vendedor só lê produtos e registra vendas; fornecedores, produtos e relatório são só do admin.
   Isso é garantido pelas permissões do banco (RLS), não apenas escondendo telas.
-- A venda baixa o estoque na mesma transação; se não houver estoque suficiente, a venda é recusada.
+- O pedido baixa o estoque de todos os itens na mesma transação; se faltar estoque de um item,
+  o pedido inteiro é recusado. Editar devolve ao estoque os itens antigos e baixa os novos;
+  cancelar devolve tudo e tira o pedido do relatório.
+- Cada vendedor só edita/cancela os próprios pedidos (o admin, qualquer um).
+- Dois produtos não podem ter o mesmo código de barras.
 - Cada venda guarda o valor unitário usado naquele momento — mudar o preço do produto depois
   não altera vendas antigas.
 - Produto que já tem vendas não pode ser excluído (para não sumir do relatório).
@@ -64,15 +72,27 @@ vendas da pessoa continuam atribuídas a ela no relatório.
 
 ### Atualizando um banco de uma versão anterior
 
-O `schema.sql` pode ser executado de novo por cima: ele cria o que falta (perfis, fornecedores, coluna do
-vendedor) e troca as permissões públicas pelas de usuário logado. Vendas registradas antes do
-login ficam sem vendedor — aparecem em "Todos os vendedores", mas em nenhum vendedor específico.
+O `schema.sql` pode ser executado de novo por cima: ele cria o que falta (perfis, fornecedores,
+pedidos, código de barras) e troca as permissões públicas pelas de usuário logado. Cada venda
+avulsa das versões anteriores vira um pedido de um item, com o mesmo vendedor e a mesma data.
+Vendas registradas antes do login ficam sem vendedor — aparecem em "Todos os vendedores", mas em
+nenhum vendedor específico.
 
 ## 2. Rodar no computador
 
 Dê dois cliques em `iniciar-servidor.bat` (precisa do Python) e acesse <http://localhost:5660>.
 
 Para testar no celular na mesma rede Wi-Fi, use o IP do computador: `http://192.168.x.x:5660`.
+A câmera (leitor de código de barras) só abre em `https://` ou em `localhost` — pelo IP da rede ela
+fica bloqueada; para testar o leitor no celular, use o site publicado na Vercel.
+
+## Leitor de código de barras
+
+- **Android (Chrome):** usa o leitor embutido do navegador.
+- **iPhone e demais:** usa a biblioteca [ZXing](https://github.com/zxing-js/browser) 0.2.1 (licença
+  MIT), guardada em `js/vendor/` e carregada só quando o navegador não tem leitor próprio.
+- Lê EAN-13/EAN-8 (o código dos produtos no Brasil), UPC, Code 128, Code 39, ITF e QR Code.
+- Na primeira vez, o navegador pede permissão para usar a câmera.
 
 ## 3. Publicar na Vercel
 
@@ -105,10 +125,12 @@ index.html         Registro de Venda
 produtos.html      Cadastro de Produto
 fornecedores.html  Cadastro de Fornecedor
 relatorio.html     Relatório de Venda por Produto
-css/estilo.css     visual das três telas (claro/escuro automático)
+css/estilo.css     visual de todas as telas (claro/escuro automático)
 js/config.js       URL e chave pública do Supabase  ← preencher
 js/api.js          login/sessão (Supabase Auth) e chamadas à API REST
 js/comum.js        formatação de R$, leitura de números, avisos, checagem de login
+js/leitor.js       leitor de código de barras pela câmera
+js/vendor/         biblioteca ZXing (leitor no iPhone) e licença
 js/login.js | venda.js | produtos.js | fornecedores.js | relatorio.js   lógica de cada tela
-supabase/schema.sql  tabelas, perfis, funções e permissões (rode de novo a cada atualização)
+supabase/schema.sql  tabelas, perfis, pedidos, funções e permissões (rode de novo a cada atualização)
 ```

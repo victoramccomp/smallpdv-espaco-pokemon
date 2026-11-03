@@ -7,6 +7,7 @@
     !url.includes('SEU-PROJETO') && !chave.includes('SUA_CHAVE');
 
   const CHAVE_SESSAO = 'pdv_sessao';
+  const ERRO_CODIGO_REPETIDO = 'Já existe outro produto com esse código de barras.';
 
   // ---------- Sessão (guardada no navegador) ----------
 
@@ -129,6 +130,7 @@
     if (resposta.status === 401) return irParaLogin();
     if (!resposta.ok) {
       if (dados && dados.code === '23503' && opcoes.erroVinculo) throw new Error(opcoes.erroVinculo);
+      if (dados && dados.code === '23505' && opcoes.erroDuplicado) throw new Error(opcoes.erroDuplicado);
       throw new Error(traduzirErro(dados, resposta.status));
     }
     return dados;
@@ -210,16 +212,19 @@
 
     // fornecedor: { nome } — vem vazio para quem não é admin
     listarProdutos() {
-      return requisicao('produtos?select=id,nome,estoque,valor_venda,fornecedor_id,fornecedor:fornecedores(nome)&order=nome.asc');
+      return requisicao('produtos?select=id,nome,estoque,valor_venda,codigo_barras,fornecedor_id,' +
+        'fornecedor:fornecedores(nome)&order=nome.asc');
     },
 
     criarProduto(produto) {
-      return requisicao('produtos', { method: 'POST', body: produto, prefer: 'return=minimal' });
+      return requisicao('produtos', {
+        method: 'POST', body: produto, prefer: 'return=minimal', erroDuplicado: ERRO_CODIGO_REPETIDO
+      });
     },
 
     atualizarProduto(id, produto) {
       return requisicao('produtos?id=eq.' + encodeURIComponent(id), {
-        method: 'PATCH', body: produto, prefer: 'return=minimal'
+        method: 'PATCH', body: produto, prefer: 'return=minimal', erroDuplicado: ERRO_CODIGO_REPETIDO
       });
     },
 
@@ -230,11 +235,28 @@
       });
     },
 
-    registrarVenda(produtoId, quantidade, valorUnitario) {
-      return requisicao('rpc/registrar_venda', {
-        method: 'POST',
-        body: { p_produto_id: produtoId, p_quantidade: quantidade, p_valor_unitario: valorUnitario }
+    // ----- pedidos -----
+    // itens: [{ produto_id, quantidade, valor_unitario }]
+
+    // Últimos pedidos visíveis para o usuário (os próprios; o admin vê todos).
+    listarPedidos() {
+      return requisicao('pedidos?select=id,usuario_id,criado_em,atualizado_em,vendedor:perfis(nome),' +
+        'itens:vendas(produto_id,quantidade,valor_unitario,valor_total,produto:produtos(nome))' +
+        '&order=criado_em.desc&limit=30');
+    },
+
+    registrarPedido(itens) {
+      return requisicao('rpc/registrar_pedido', { method: 'POST', body: { p_itens: itens } });
+    },
+
+    editarPedido(pedidoId, itens) {
+      return requisicao('rpc/editar_pedido', {
+        method: 'POST', body: { p_pedido_id: pedidoId, p_itens: itens }
       });
+    },
+
+    cancelarPedido(pedidoId) {
+      return requisicao('rpc/cancelar_pedido', { method: 'POST', body: { p_pedido_id: pedidoId } });
     },
 
     // inicio/fim: Date ou null (null = sem limite); usuarioId/fornecedorId: null = todos

@@ -6,6 +6,8 @@
   const campoEstoque = document.getElementById('estoque');
   const campoValor = document.getElementById('valor-venda');
   const campoFornecedor = document.getElementById('fornecedor');
+  const campoCodigo = document.getElementById('codigo-barras');
+  const botaoLer = document.getElementById('btn-ler');
   const botaoSalvar = document.getElementById('btn-salvar');
   const botaoCancelar = document.getElementById('btn-cancelar');
   const botaoExcluir = document.getElementById('btn-excluir');
@@ -46,7 +48,8 @@
     lista.innerHTML = produtos.map((p) => {
       const textoEstoque = p.estoque > 0 ? 'Estoque: ' + p.estoque : 'Sem estoque';
       const editando = emEdicao && emEdicao.id === p.id ? ' editando' : '';
-      const fornecedor = p.fornecedor ? escaparHtml(p.fornecedor.nome) : 'Sem fornecedor';
+      const fornecedor = (p.fornecedor ? escaparHtml(p.fornecedor.nome) : 'Sem fornecedor') +
+        (p.codigo_barras ? ' · Cód. ' + escaparHtml(p.codigo_barras) : '');
       return '<li><button type="button" class="item-produto' + editando + '" data-id="' + p.id + '">' +
         '<span><span class="nome">' + escaparHtml(p.nome) + '</span>' +
         '<span class="estoque' + (p.estoque > 0 ? '' : ' zerado') + '">' + textoEstoque + '</span>' +
@@ -73,6 +76,7 @@
     campoEstoque.value = produto.estoque;
     campoValor.value = valorParaCampo(produto.valor_venda);
     campoFornecedor.value = produto.fornecedor_id || '';
+    campoCodigo.value = produto.codigo_barras || '';
     tituloForm.textContent = 'Editar produto';
     botaoSalvar.textContent = 'Salvar alterações';
     botaoCancelar.hidden = false;
@@ -104,6 +108,34 @@
 
   botaoCancelar.addEventListener('click', modoNovo);
 
+  // Produto que já usa este código (sem contar o que está sendo editado).
+  function donoDoCodigo(codigo) {
+    return produtos.find((p) => p.codigo_barras === codigo && (!emEdicao || p.id !== emEdicao.id));
+  }
+
+  botaoLer.addEventListener('click', async () => {
+    let codigo;
+    try {
+      codigo = await LeitorCodigo.ler();
+    } catch (erro) {
+      avisar(erro.message, 'erro');
+      return;
+    }
+    if (!codigo) return;
+    campoCodigo.value = codigo;
+    const dono = donoDoCodigo(codigo);
+    if (dono) avisar('Atenção: esse código já é do produto "' + dono.nome + '".', 'erro');
+    else avisar('Código lido: ' + codigo, 'ok');
+  });
+
+  // Leitor Bluetooth "digita" o código e aperta Enter: não envia o formulário.
+  campoCodigo.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') {
+      evento.preventDefault();
+      campoEstoque.focus();
+    }
+  });
+
   form.addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
@@ -119,7 +151,8 @@
       nome,
       estoque,
       valor_venda: valor,
-      fornecedor_id: campoFornecedor.value ? Number(campoFornecedor.value) : null
+      fornecedor_id: campoFornecedor.value ? Number(campoFornecedor.value) : null,
+      codigo_barras: campoCodigo.value.trim() || null
     };
     const eraNovo = !emEdicao;
     const textoOriginal = botaoSalvar.textContent;

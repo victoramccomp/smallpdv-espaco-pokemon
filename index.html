@@ -17,33 +17,68 @@
   </header>
 
   <main class="conteudo">
-    <form id="form-venda" class="cartao" novalidate>
-      <label class="campo">
-        <span>Produto</span>
-        <select id="produto" required>
-          <option value="">Carregando produtos…</option>
-        </select>
-      </label>
+    <p class="faixa-edicao" id="faixa-edicao" hidden></p>
+
+    <form id="form-item" class="cartao" novalidate>
+      <div class="campo">
+        <span><label for="produto">Produto</label></span>
+        <div class="campo-com-botao">
+          <select id="produto">
+            <option value="">Carregando produtos…</option>
+          </select>
+          <button type="button" class="botao-leitor" id="btn-ler" aria-label="Ler código de barras" title="Ler código de barras">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>
+          </button>
+        </div>
+      </div>
       <p class="dica" id="info-estoque"></p>
 
       <div class="linha">
         <label class="campo">
           <span>Valor unitário (R$)</span>
-          <input id="valor" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
+          <input id="valor" inputmode="decimal" autocomplete="off" placeholder="0,00">
         </label>
         <label class="campo">
           <span>Quantidade</span>
-          <input id="quantidade" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required>
+          <input id="quantidade" type="number" inputmode="numeric" min="1" step="1" placeholder="0">
         </label>
       </div>
 
+      <button class="botao secundario" type="submit" id="btn-adicionar">Adicionar ao pedido</button>
+    </form>
+
+    <section class="cartao" aria-labelledby="titulo-pedido">
+      <h2 id="titulo-pedido">Pedido</h2>
+      <ul id="itens-pedido" class="itens-pedido"></ul>
+
       <div class="total">
-        <span>Total</span>
+        <span>Total do pedido</span>
         <strong id="total">R$ 0,00</strong>
       </div>
 
-      <button class="botao" type="submit" id="btn-registrar">Registrar venda</button>
-    </form>
+      <div class="linha">
+        <label class="campo">
+          <span>Recebido em dinheiro</span>
+          <input id="recebido" inputmode="decimal" autocomplete="off" placeholder="0,00">
+        </label>
+        <div class="campo troco">
+          <span id="rotulo-troco">Troco</span>
+          <strong id="troco">—</strong>
+        </div>
+      </div>
+
+      <button class="botao" type="button" id="btn-finalizar" disabled>Registrar venda</button>
+      <div class="acoes acoes-edicao" id="acoes-edicao" hidden>
+        <button class="botao secundario" type="button" id="btn-descartar">Descartar alterações</button>
+      </div>
+      <button class="botao-texto-perigo" type="button" id="btn-limpar" hidden>Limpar pedido</button>
+      <button class="botao-texto-perigo" type="button" id="btn-cancelar-pedido" hidden>Cancelar este pedido</button>
+    </section>
+
+    <h2 class="titulo-secao" id="titulo-pedidos">Meus pedidos</h2>
+    <ul id="lista-pedidos" class="lista">
+      <li class="vazio">Carregando…</li>
+    </ul>
   </main>
 
   <nav class="abas" aria-label="Telas">
@@ -70,6 +105,7 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/comum.js"></script>
+  <script src="js/leitor.js"></script>
   <script src="js/venda.js"></script>
 </body>
 </html>
