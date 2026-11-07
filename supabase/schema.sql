@@ -90,6 +90,10 @@ alter table public.produtos
 create unique index if not exists produtos_codigo_barras_unico
   on public.produtos (codigo_barras) where codigo_barras is not null;
 
+-- Valor consignado (opcional).
+alter table public.produtos
+  add column if not exists valor_consignado numeric(10,2) check (valor_consignado >= 0);
+
 -- Pedido = uma venda ao cliente, com um ou mais itens.
 create table if not exists public.pedidos (
   id            bigint generated always as identity primary key,

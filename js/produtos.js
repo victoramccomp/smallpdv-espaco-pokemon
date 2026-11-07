@@ -5,6 +5,7 @@
   const campoNome = document.getElementById('nome');
   const campoEstoque = document.getElementById('estoque');
   const campoValor = document.getElementById('valor-venda');
+  const campoConsignado = document.getElementById('valor-consignado');
   const campoFornecedor = document.getElementById('fornecedor');
   const campoCodigo = document.getElementById('codigo-barras');
   const botaoLer = document.getElementById('btn-ler');
@@ -49,7 +50,8 @@
       const textoEstoque = p.estoque > 0 ? 'Estoque: ' + p.estoque : 'Sem estoque';
       const editando = emEdicao && emEdicao.id === p.id ? ' editando' : '';
       const fornecedor = (p.fornecedor ? escaparHtml(p.fornecedor.nome) : 'Sem fornecedor') +
-        (p.codigo_barras ? ' · Cód. ' + escaparHtml(p.codigo_barras) : '');
+        (p.codigo_barras ? ' · Cód. ' + escaparHtml(p.codigo_barras) : '') +
+        (p.valor_consignado != null ? ' · Consignado ' + formatarDinheiro(p.valor_consignado) : '');
       return '<li><button type="button" class="item-produto' + editando + '" data-id="' + p.id + '">' +
         '<span><span class="nome">' + escaparHtml(p.nome) + '</span>' +
         '<span class="estoque' + (p.estoque > 0 ? '' : ' zerado') + '">' + textoEstoque + '</span>' +
@@ -75,6 +77,7 @@
     campoNome.value = produto.nome;
     campoEstoque.value = produto.estoque;
     campoValor.value = valorParaCampo(produto.valor_venda);
+    campoConsignado.value = produto.valor_consignado != null ? valorParaCampo(produto.valor_consignado) : '';
     campoFornecedor.value = produto.fornecedor_id || '';
     campoCodigo.value = produto.codigo_barras || '';
     tituloForm.textContent = 'Editar produto';
@@ -87,7 +90,7 @@
   }
 
   function limparErros() {
-    [campoNome, campoEstoque, campoValor].forEach((c) => c.removeAttribute('aria-invalid'));
+    [campoNome, campoEstoque, campoValor, campoConsignado].forEach((c) => c.removeAttribute('aria-invalid'));
   }
 
   function erroNoCampo(campo, mensagem) {
@@ -103,7 +106,7 @@
     if (produto) modoEdicao(produto);
   });
 
-  [campoNome, campoEstoque, campoValor].forEach((c) =>
+  [campoNome, campoEstoque, campoValor, campoConsignado].forEach((c) =>
     c.addEventListener('input', () => c.removeAttribute('aria-invalid')));
 
   botaoCancelar.addEventListener('click', modoNovo);
@@ -142,15 +145,21 @@
     const nome = campoNome.value.trim();
     const estoque = lerInteiro(campoEstoque.value, 0);
     const valor = lerDinheiro(campoValor.value);
+    // opcional: em branco = sem valor consignado
+    const consignado = campoConsignado.value.trim() ? lerDinheiro(campoConsignado.value) : null;
 
     if (!nome) return erroNoCampo(campoNome, 'Digite o nome do produto.');
     if (!Number.isFinite(estoque)) return erroNoCampo(campoEstoque, 'Digite o estoque (número inteiro, 0 ou mais).');
     if (!Number.isFinite(valor)) return erroNoCampo(campoValor, 'Digite um valor válido, ex.: 12,50');
+    if (consignado !== null && !Number.isFinite(consignado)) {
+      return erroNoCampo(campoConsignado, 'Digite um valor consignado válido, ex.: 8,00 (ou deixe em branco).');
+    }
 
     const dados = {
       nome,
       estoque,
       valor_venda: valor,
+      valor_consignado: consignado,
       fornecedor_id: campoFornecedor.value ? Number(campoFornecedor.value) : null,
       codigo_barras: campoCodigo.value.trim() || null
     };

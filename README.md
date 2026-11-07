@@ -13,7 +13,7 @@ pedidos com vários itens, calcula o troco, baixa o estoque e mostra o relatóri
 |---|---|---|---|
 | `login.html` | Login | todos | E-mail e senha cadastrados pelo admin. |
 | `index.html` | Registro de Venda | todos | Monta o **pedido**: escolhe o produto (na lista ou pelo botão da câmera, que lê o código de barras) → o valor de venda já vem preenchido (dá para alterar) → quantidade → "Adicionar ao pedido". Os itens vão somando no total; dá para mudar a quantidade (− / +) ou remover. "Recebido em dinheiro" calcula o troco. "Registrar venda" finaliza o pedido. Abaixo ficam os pedidos já feitos: toque num deles para editar ou cancelar. |
-| `produtos.html` | Cadastro de Produto | admin | Nome, código de barras (opcional, digitado ou lido pela câmera), fornecedor (opcional), quantidade em estoque e valor de venda. Toque num produto da lista para editar ou excluir. |
+| `produtos.html` | Cadastro de Produto | admin | Nome, código de barras (opcional, digitado ou lido pela câmera), fornecedor (opcional), quantidade em estoque, valor de venda e valor consignado (opcional). Toque num produto da lista para editar ou excluir. |
 | `fornecedores.html` | Cadastro de Fornecedor | admin | Nome do fornecedor. Toque num fornecedor da lista para editar ou excluir. |
 | `relatorio.html` | Relatório de Venda por Produto | admin | Nome do produto, quantidade vendida e valor total, com filtros por vendedor, por fornecedor e por período (Hoje / 7 dias / Mês / Tudo). Com um fornecedor escolhido, o "Valor total" é o total vendido daquele fornecedor. |
 

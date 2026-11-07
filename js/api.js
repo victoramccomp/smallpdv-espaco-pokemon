@@ -212,7 +212,7 @@
 
     // fornecedor: { nome } — vem vazio para quem não é admin
     listarProdutos() {
-      return requisicao('produtos?select=id,nome,estoque,valor_venda,codigo_barras,fornecedor_id,' +
+      return requisicao('produtos?select=id,nome,estoque,valor_venda,valor_consignado,codigo_barras,fornecedor_id,' +
         'fornecedor:fornecedores(nome)&order=nome.asc');
     },
 
